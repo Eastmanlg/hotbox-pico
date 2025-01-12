@@ -16,6 +16,7 @@ To create:
     - adafruit-ampy
     - mpy-cross
     - esptool
+    - bleak
 
 ## VSCode Env
 
@@ -25,3 +26,10 @@ To create:
 1. Plug in Pico
 
 run `scripts/connect_to_wifi.py` on a connected Pico W, then `import mip` and `mip.install('aioble')` to install the *aioble* package directly to the Pico W
+
+
+
+## Running
+Project should be uploaded to pico when deemed stable. 
+Once uploaded, or running via micropico, run `centralDevice/central_device.py` on laptop
+Should automatically start reporting values
