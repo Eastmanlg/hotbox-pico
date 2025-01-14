@@ -10,7 +10,7 @@ import struct
 #OTA
 from ota import OTAUpdater
 from WIFI_CONFIG import SSID, PASSWORD
-firmware_url = "https://raw.githubusercontent.com/Eastmanlg/hotbox-pico/main/"
+firmware_url = "https://raw.githubusercontent.com/Eastmanlg/hotbox-pico/"
 ota_updater = OTAUpdater(SSID, PASSWORD, firmware_url, "main.py")
 ota_updater.download_and_install_update_if_available()
 
@@ -40,7 +40,7 @@ def _encode_temperature(temp_deg_c):
 
 # This would be periodically polling a hardware sensor.
 async def sensor_task():
-    t = 24.5
+    t = 69.5
     while True:
         temp_characteristic.write(_encode_temperature(t))
         t += random.uniform(-0.5, 0.5)
