@@ -1,15 +1,19 @@
 import sys
-
 sys.path.append("")
-
 from micropython import const
-
 import uasyncio as asyncio
 import aioble
 import bluetooth
-
 import random
 import struct
+
+#OTA
+from ota import OTAUpdater
+from WIFI_CONFIG import SSID, PASSWORD
+firmware_url = "https://raw.githubusercontent.com/Eastmanlg/hotbox-pico/main/"
+ota_updater = OTAUpdater(SSID, PASSWORD, firmware_url, "main.py")
+ota_updater.download_and_install_update_if_available()
+
 
 # org.bluetooth.service.environmental_sensing
 _ENV_SENSE_UUID = bluetooth.UUID(0x181A)
