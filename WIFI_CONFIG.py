@@ -1,2 +1,2 @@
-SSID = "my wifi hotspot name"
-PASSWORD = "wifi password"
+SSID = "Wu-Tang LAN"
+PASSWORD = "Ain'tNothingToFunkWith!"
