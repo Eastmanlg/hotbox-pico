@@ -1,3 +1,5 @@
+# Driver from https://github.com/aalbersJulia/temperature-reader
+# For the MAX31865 thermocouple amplifier driver for the PT100 (2-wire)
 from micropython import const
 
 import machine
