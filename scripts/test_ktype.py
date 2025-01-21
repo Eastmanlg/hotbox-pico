@@ -3,9 +3,14 @@ from machine import Pin, SPI
 from max6675 import MAX6675
 
 # SPI Configuration
+# sck = Pin(22, Pin.OUT)  # Clock pin
+# cs = Pin(21, Pin.OUT)  # Chip Select pin
+# so = Pin(19, Pin.IN)  # Data pin
+
+# SPI Configuration
 sck = Pin(22, Pin.OUT)  # Clock pin
-cs = Pin(21, Pin.OUT)  # Chip Select pin
-so = Pin(19, Pin.IN)  # Data pin
+cs = Pin(20, Pin.OUT)  # Chip Select pin
+so = Pin(18, Pin.IN)  # Data pin
 
 # Create MAX6675 sensor instance
 sensor = MAX6675(sck, cs, so)
