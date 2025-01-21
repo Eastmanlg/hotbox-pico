@@ -91,5 +91,7 @@ class MAX6675:
             self._last_measurement_start = time.ticks_ms()
 
             self._last_read_temp = value * 0.25
+            # Convert to Fahrenheit
+            self._last_read_temp = self._last_read_temp * 9.0 / 5.0 + 32.0
 
         return self._last_read_temp
