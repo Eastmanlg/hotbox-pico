@@ -24,7 +24,7 @@ if not dev:
 _ENV_SENSE_UUID = bluetooth.UUID(0x181A)
 # org.bluetooth.characteristic.temperature
 _ENV_SENSE_TEMP1_UUID = bluetooth.UUID(0x2A6E) # generic temperature
-_ENV_SENSE_TEMP2_UUID = bluetooth.UUID(0x2A6E) # generic temperature
+_ENV_SENSE_TEMP2_UUID = bluetooth.UUID(0x2A6F) # generic temperature
 # org.bluetooth.characteristic.gap.appearance.xml
 _ADV_APPEARANCE_GENERIC_THERMOMETER = const(768)
 # How frequently to send advertising beacons.
@@ -66,7 +66,7 @@ async def sensor_task():
     while True:
         temp1 = sensor0.read()
         temp2 = sensor1.read()
-        
+
         temp1_characteristic.write(_encode_temperature(temp1))
         temp2_characteristic.write(_encode_temperature(temp2))
         
