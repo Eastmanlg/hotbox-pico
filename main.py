@@ -7,6 +7,8 @@ import bluetooth
 import random
 import struct
 
+
+
 #OTA
 from ota import OTAUpdater
 from WIFI_CONFIG import SSID, PASSWORD
