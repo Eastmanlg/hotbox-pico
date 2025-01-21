@@ -9,7 +9,8 @@ logger = logging.getLogger(__name__)
 # org.bluetooth.service.environmental_sensing
 _ENV_SENSE_UUID = "0000{0:x}-0000-1000-8000-00805f9b34fb".format(0x181A)
 # org.bluetooth.characteristic.temperature
-_ENV_SENSE_TEMP_UUID = "0000{0:x}-0000-1000-8000-00805f9b34fb".format(0x2A6E)
+_ENV_SENSE_TEMP1_UUID = "0000{0:x}-0000-1000-8000-00805f9b34fb".format(0x2A6E)
+_ENV_SENSE_TEMP2_UUID = "0000{0:x}-0000-1000-8000-00805f9b34fb".format(0x2A1C)
 
 
 def _decode_temperature(data):
@@ -40,12 +41,20 @@ async def do_connect():
             logger.error("Temperature service not found")
             return
 
-        characteristic = service.get_characteristic(_ENV_SENSE_TEMP_UUID)
-        if characteristic is None:
-            logger.error("Temperature characteristic not found")
+        temp1Characteristic = service.get_characteristic(_ENV_SENSE_TEMP1_UUID)
+        if temp1Characteristic is None:
+            logger.error("Temperature 1 characteristic not found")
             return
+        
+        temp2Characteristic = service.get_characteristic(_ENV_SENSE_TEMP2_UUID)
+        if temp2Characteristic is None:
+            logger.error("Temperature 2 characteristic not found")
+            return
+        
 
-        await client.start_notify(characteristic, _callback)
+        await client.start_notify(temp1Characteristic, _callback)
+        await client.start_notify(temp2Characteristic, _callback)
+        print()
         while client.is_connected:
             await asyncio.sleep(5)
 
