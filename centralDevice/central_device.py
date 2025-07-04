@@ -16,10 +16,16 @@ _ENV_SENSE_TEMP2_UUID = "0000{0:x}-0000-1000-8000-00805f9b34fb".format(0x2A1C)
 def _decode_temperature(data):
     return struct.unpack("<h", data)[0] / 100
 
+def print_temp(senderID, data):
+    if(senderID == _ENV_SENSE_TEMP1_UUID):
+        print(f"Temperature 1: {data:.2f} F")
+    else:
+        print(f"Temperature 2: {data:.2f} F")
 
 def _callback(sender: bleak.BleakGATTCharacteristic, data: bytearray):
     data = None if not data else _decode_temperature(data)
-    print(f"{sender}: {data}")
+    print_temp(sender.uuid, data)
+    
 
 
 async def find_temp_sensor():
@@ -54,7 +60,7 @@ async def do_connect():
 
         await client.start_notify(temp1Characteristic, _callback)
         await client.start_notify(temp2Characteristic, _callback)
-        print()
+
         while client.is_connected:
             await asyncio.sleep(5)
 
