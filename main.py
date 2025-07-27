@@ -115,14 +115,18 @@ async def sensor_task():
 
 async def notify_gatt_client(connection):
     if connection is None:
+        print("No connection to notify.")
         return
     temp1_characteristic.notify(connection)
     temp2_characteristic.notify(connection)
+    #print("Notified GATT client with temperature data.")
 
 # Serially wait for connections. Don't advertise while a central is
 # connected.
 async def peripheral_task():
+    print("Starting BLE task...")
     while True:
+        print("Waiting for a GATT client to connect...")
         async with await aioble.advertise(
             _ADV_INTERVAL_MS,
             name="mpy-temp",
@@ -134,6 +138,7 @@ async def peripheral_task():
             while connection.is_connected():
                 await notify_gatt_client(connection)
                 await asyncio.sleep(1)
+            print("Disconnected from", connection.device)
 
 # Run both tasks.
 async def main():
