@@ -7,15 +7,11 @@ import bluetooth
 import random
 import struct
 from machine import Pin
-from max31865 import MAX31865
-from machine import SPI
 from max6675 import MAX6675
-import time
-
 
 dev = True
 
-# OTA
+#OTA
 if not dev:
     from ota import OTAUpdater
     from WIFI_CONFIG import SSID, PASSWORD
@@ -23,11 +19,12 @@ if not dev:
     ota_updater = OTAUpdater(SSID, PASSWORD, firmware_url, "main.py")
     ota_updater.download_and_install_update_if_available()
 
+
 # org.bluetooth.service.environmental_sensing
 _ENV_SENSE_UUID = bluetooth.UUID(0x181A)
 # org.bluetooth.characteristic.temperature
-_ENV_SENSE_TEMP1_UUID = bluetooth.UUID(0x2A6E)  # generic temperature
-_ENV_SENSE_TEMP2_UUID = bluetooth.UUID(0x2A1C)  # generic temperature
+_ENV_SENSE_TEMP1_UUID = bluetooth.UUID(0x2A6E) # generic temperature
+_ENV_SENSE_TEMP2_UUID = bluetooth.UUID(0x2A1C) # generic temperature
 # org.bluetooth.characteristic.gap.appearance.xml
 _ADV_APPEARANCE_GENERIC_THERMOMETER = const(768)
 # How frequently to send advertising beacons.
@@ -46,85 +43,61 @@ temp2_characteristic = aioble.Characteristic(
 
 aioble.register_services(temp_service)
 
+
 # Thermocouple SPI Configuration
+# sck = Pin(22, Pin.OUT)  # Clock pin
+# cs0 = Pin(21, Pin.OUT)  # Chip 0 Select pin
+# so0 = Pin(19, Pin.IN)  # Data 0 pin
+# cs1 = Pin(20, Pin.OUT)  # Chip Select 1 pin
+# so1 = Pin(18, Pin.IN)  # Data 1 pin
+
 sck = Pin(14, Pin.OUT)   # New Clock pin
 cs0 = Pin(13, Pin.OUT)   # New Chip Select 0
 so0 = Pin(12, Pin.IN)    # New Data pin 0
 cs1 = Pin(11, Pin.OUT)   # New Chip Select 1
 so1 = Pin(10, Pin.IN)    # New Data pin 1
 
-# MAX31865 (Temp2) on SPI1
-sck1 = Pin(10, Pin.OUT)     # SPI1 Clock
-cs2 = Pin(9, Pin.OUT)       # MAX31865 Chip Select
-mosi = Pin(11, Pin.OUT)     # MAX31865 MOSI
-miso = Pin(12, Pin.IN)      # MAX31865 MISO
+# Create sensor instances
+sensor0 = MAX6675(sck, cs0, so0)
+sensor1 = MAX6675(sck, cs1, so1)
 
-# Create sensor instance for MAX6675
-sensor0 = MAX6675(sck0, cs0, so0)
-
-# Create SPI1 bus and MAX31865 instance
-spi = SPI(1, baudrate=5000000, sck=sck1, mosi=mosi, miso=miso)
-sensor1 = MAX31865(spi, cs2)
 
 # Helper to encode the temperature characteristic encoding (sint16, hundredths of a degree).
 def _encode_temperature(temp_deg_f):
     return struct.pack("<i", int(temp_deg_f * 100))
 
-# Custom median function
-def median(data):
-    data = sorted(data)
-    n = len(data)
-    mid = n // 2
-    if n % 2 == 0:
-        return (data[mid - 1] + data[mid]) / 2
-    else:
-        return data[mid]
-
-# Multi-sample median filter for robustness
-def get_filtered_temp(sensor, samples=4, delay=0.2):
-    readings = []
-    for _ in range(samples):
-        t = sensor.read()
-        if t is not None and t > 0:
-            readings.append(t)
-        # time.sleep(delay)  # Delay is fine here since uasyncio is not used inside
-
-    if not readings:
-        return 32.0  # fallback to 32°F if sensor fails
-
-    return median(readings)
 
 # This would be periodically polling a hardware sensor.
 async def sensor_task():
     while True:
-        temp1 = get_filtered_temp(sensor0)
-        temp2 = get_filtered_temp(sensor1)
+        temp1 = sensor0.read()
+        temp2 = sensor1.read()
 
         temp1_characteristic.write(_encode_temperature(temp1))
         temp2_characteristic.write(_encode_temperature(temp2))
-
+        
         if dev:
-            print(f"Grill:\t{temp1:.2f} F")
-            print(f"Drum:\t{temp2:.2f} F")
+            print(f"Temperature 1: {temp1:.2f} F")
+            print(f"Temperature 2: {temp2:.2f} F")
             print()
 
-        await asyncio.sleep(1)
+        await asyncio.sleep_ms(1000)
 
 async def notify_gatt_client(connection):
-    if connection is None:
-        return
+    if connection is None: return
     temp1_characteristic.notify(connection)
     temp2_characteristic.notify(connection)
+
 
 # Serially wait for connections. Don't advertise while a central is
 # connected.
 async def peripheral_task():
     while True:
         async with await aioble.advertise(
-            _ADV_INTERVAL_MS,
-            name="mpy-temp",
-            services=[_ENV_SENSE_UUID],
-            appearance=_ADV_APPEARANCE_GENERIC_THERMOMETER,
+                _ADV_INTERVAL_MS,
+                name="mpy-temp",
+                services=[_ENV_SENSE_UUID],
+                appearance=_ADV_APPEARANCE_GENERIC_THERMOMETER,
         ) as connection:
             print("Connection from", connection.device)
 
@@ -132,10 +105,12 @@ async def peripheral_task():
                 await notify_gatt_client(connection)
                 await asyncio.sleep(1)
 
+
 # Run both tasks.
 async def main():
     t1 = asyncio.create_task(sensor_task())
     t2 = asyncio.create_task(peripheral_task())
     await asyncio.gather(t1, t2)
+
 
 asyncio.run(main())
