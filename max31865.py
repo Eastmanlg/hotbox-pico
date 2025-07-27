@@ -7,6 +7,7 @@ import time
 import math
 
 _MAX31865_CONFIGURATION_REG = const(0x00)
+# _MAX31865_CONFIGURATION_REG = const(0xD2)
 _MAX31865_RTD_MSB_REG = const(0x01)
 _MAX31865_RTD_LSB_REG = const(0x02)
 _MAX31865_HIGH_FAULT_THRESHOLD_MSB_REG = const(0x03)
@@ -48,7 +49,7 @@ class MAX31865:
         cs.init(mode=machine.Pin.OUT, value=1)
         self.cs = cs
         
-        self.configure(0x00)
+        self.configure(0xD2)
         
     """"
     Configuration Register Definition
