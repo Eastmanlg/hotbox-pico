@@ -7,6 +7,8 @@ import bluetooth
 import random
 import struct
 from machine import Pin
+from max31865 import MAX31865
+from machine import SPI
 from max6675 import MAX6675
 
 dev = True
@@ -43,17 +45,25 @@ temp2_characteristic = aioble.Characteristic(
 
 aioble.register_services(temp_service)
 
+# Thermocouple and RTD SPI Configuration
 
-# Thermocouple SPI Configuration
-sck = Pin(22, Pin.OUT)  # Clock pin
-cs0 = Pin(21, Pin.OUT)  # Chip 0 Select pin
-so0 = Pin(19, Pin.IN)  # Data 0 pin
-cs1 = Pin(20, Pin.OUT)  # Chip Select 1 pin
-so1 = Pin(18, Pin.IN)  # Data 1 pin
+# MAX6675 (Temp1) on SPI0
+sck0 = Pin(2, Pin.OUT)      # SPI0 Clock
+cs0 = Pin(3, Pin.OUT)       # MAX6675 Chip Select
+so0 = Pin(4, Pin.IN)        # MAX6675 MISO
 
-# Create sensor instances
-sensor0 = MAX6675(sck, cs0, so0)
-sensor1 = MAX6675(sck, cs1, so1)
+# MAX31865 (Temp2) on SPI1
+sck1 = Pin(10, Pin.OUT)     # SPI1 Clock
+cs2 = Pin(9, Pin.OUT)       # MAX31865 Chip Select
+mosi = Pin(11, Pin.OUT)     # MAX31865 MOSI
+miso = Pin(12, Pin.IN)      # MAX31865 MISO
+
+# Create sensor instance for MAX6675
+sensor0 = MAX6675(sck0, cs0, so0)
+
+# Create SPI1 bus and MAX31865 instance
+spi = SPI(1, baudrate=5000000, sck=sck1, mosi=mosi, miso=miso)
+sensor1 = MAX31865(spi, cs2)
 
 
 # Helper to encode the temperature characteristic encoding (sint16, hundredths of a degree).
@@ -64,8 +74,11 @@ def _encode_temperature(temp_deg_f):
 # This would be periodically polling a hardware sensor.
 async def sensor_task():
     while True:
-        temp1 = sensor0.read()
-        temp2 = sensor1.read()
+        temp1 = get_filtered_temp(sensor0)
+        # temp2 = get_filtered_temp(sensor1)
+        config = 0xD2  # 11010010
+        sensor1.configure(config)
+        temp2 = sensor1.temperature  # Use MAX31865's temperature method
 
         temp1_characteristic.write(_encode_temperature(temp1))
         temp2_characteristic.write(_encode_temperature(temp2))
