@@ -7,11 +7,18 @@ import bluetooth
 import random
 import struct
 from machine import Pin
-from max31865 import MAX31865
+from max31865 import Max31865
 from machine import SPI
 from max6675 import MAX6675
 import time
 
+
+# Set CS HIGH before anything else
+Pin(9, Pin.OUT, value=1)  # Ensures sensor starts deselected (idle high)
+max_power = Pin(28, Pin.OUT, value=1)  # Pin to control power to the MAX31865
+
+# Let MAX31865 power up fully
+time.sleep(0.1)
 
 dev = True
 
@@ -53,18 +60,29 @@ sck0 = Pin(2, Pin.OUT)      # SPI0 Clock
 cs0 = Pin(3, Pin.OUT)       # MAX6675 Chip Select
 so0 = Pin(4, Pin.IN)        # MAX6675 MISO
 
-# MAX31865 (Temp2) on SPI1
-sck1 = Pin(10, Pin.OUT)     # SPI1 Clock
-cs2 = Pin(9, Pin.OUT)       # MAX31865 Chip Select
-mosi = Pin(11, Pin.OUT)     # MAX31865 MOSI
-miso = Pin(12, Pin.IN)      # MAX31865 MISO
 
 # Create sensor instance for MAX6675
 sensor0 = MAX6675(sck0, cs0, so0)
 
-# Create SPI1 bus and MAX31865 instance
-spi = SPI(1, baudrate=5000000, sck=sck1, mosi=mosi, miso=miso)
-sensor1 = MAX31865(spi, cs2)
+# Create MAX31865 instance
+sensor1 = Max31865(
+    bus=1,
+    cs=9,
+    wires=3,
+    misoPin=12,
+    mosiPin=11,
+    sckPin=10,
+    filter_frequency=60,  # Or 50 depending on your mains
+    ref_resistor=430.0
+)
+
+# Power cycle the MAX31865 to ensure it starts fresh
+time.sleep(0.2)   # Allow MAX31865 to stabilize
+max_power.off()    # Cut power
+time.sleep(0.2)     # Wait
+max_power.on()     # Power on sensor
+time.sleep(0.2)     # Let it stabilize
+
 
 # Helper to encode the temperature characteristic encoding (sint16, hundredths of a degree).
 def _encode_temperature(temp_deg_f):
@@ -99,9 +117,15 @@ async def sensor_task():
     while True:
         temp1 = get_filtered_temp(sensor0)
         # temp2 = get_filtered_temp(sensor1)
-        config = 0xD2  # 11010010
-        sensor1.configure(config)
-        temp2 = sensor1.temperature  # Use MAX31865's temperature method
+        temp2C = sensor1.temperature  # Use MAX31865's temperature method
+        temp2 = (temp2C * 9 / 5) + 32  # Convert Celsius to Fahrenheit
+
+        faults = sensor1.fault
+        if any(faults):
+            print(f"MAX31865 Fault detected: {faults}")
+            sensor1.clear_faults()
+
+
 
         temp1_characteristic.write(_encode_temperature(temp1))
         temp2_characteristic.write(_encode_temperature(temp2))

@@ -58,8 +58,10 @@ class Max31865:
                  misoPin=11, mosiPin=12, sckPin=10):
 
         # Setup SPI
-        self.cs = Pin(cs, mode=Pin.OUT)
-        self.cs.low()
+        # self.cs = Pin(cs, mode=Pin.OUT)
+        self.cs = Pin(cs, mode=Pin.OUT, value=1)
+        time.sleep(0.1) # Allow CS to settle
+        # self.cs.low()
         self._device = SPI(bus, baudrate=200000, polarity=polarity, phase=1,
                            firstbit=SPI.MSB, sck=Pin(sckPin),
                            mosi=Pin(mosiPin), miso=Pin(misoPin))
@@ -195,13 +197,14 @@ class Max31865:
             if not rtd & 1:
                 rtd >>= 1
                 return rtd
-        self.clear_faults()
+        self.clear_faults() 
         self.bias = True
         time.sleep(0.01)
         config = self._read_u8(_MAX31865_CONFIG_REG)
         config |= _MAX31865_CONFIG_1SHOT
         self._write_u8(_MAX31865_CONFIG_REG, config)
-        time.sleep(0.065)
+        # time.sleep(0.065) # Original to github
+        time.sleep(0.1) # Increased to allow for 1-shot conversion
         rtd = self._read_u16(_MAX31865_RTDMSB_REG)
         self.bias = False
         # Remove fault bit.
@@ -252,3 +255,42 @@ class Max31865:
         rpoly *= raw_reading  # ^5
         temp += 1.5243e-10 * rpoly
         return temp
+
+    @property
+    def temperatureF(self):
+        """Read the temperature of the sensor and return its value in degrees
+        Fahrenheit.
+        """
+        # This math originates from:
+        # http://www.analog.com/media/en/technical-documentation/application-notes/AN709_0.pdf
+        # To match the naming from the app note we tell lint to ignore the Z1-4
+        # naming.
+        # pylint: disable=invalid-name
+        raw_reading = self.resistance
+        Z1 = -_RTD_A
+        Z2 = _RTD_A * _RTD_A - (4 * _RTD_B)
+        Z3 = (4 * _RTD_B) / self.rtd_nominal
+        Z4 = 2 * _RTD_B
+        temp = Z2 + (Z3 * raw_reading)
+        temp = (math.sqrt(temp) + Z1) / Z4
+        if temp >= 0:
+            return temp
+
+        # For the following math to work, nominal RTD resistance must be normalized to 100 ohms
+        raw_reading /= self.rtd_nominal
+        raw_reading *= 100
+
+        rpoly = raw_reading
+        temp = -242.02
+        temp += 2.2228 * rpoly
+        rpoly *= raw_reading  # square
+        temp += 2.5859e-3 * rpoly
+        rpoly *= raw_reading  # ^3
+        temp -= 4.8260e-6 * rpoly
+        rpoly *= raw_reading  # ^4
+        temp -= 2.8183e-8 * rpoly
+        rpoly *= raw_reading  # ^5
+        temp += 1.5243e-10 * rpoly
+        # Convert Celsius to Fahrenheit
+        tempF = (temp * 9.0 / 5.0) + 32.0
+        return tempF
